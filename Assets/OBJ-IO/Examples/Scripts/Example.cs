@@ -1,51 +1,44 @@
-
-using System;
 using System.IO;
-using System.Collections;
-using System.Collections.Generic;
-
+using OBJ_IO.Plugins.Extension;
+using OBJ_IO.Plugins.Mesh.OBJ;
 using UnityEngine;
 
-using UnityExtension;
-
-using Random = UnityEngine.Random;
-
-[RequireComponent(typeof(MeshFilter))]
-public class Example : MonoBehaviour
+namespace OBJ_IO.Examples.Scripts
 {
-	//------------------------------------------------------------------------------------------------------------	
-	private const string INPUT_PATH = @"Assets/OBJ-IO/Examples/Meshes/Teapot.obj";
-	private const string OUTPUT_PATH = @"Assets/OBJ-IO/Examples/Meshes/Teapot_Modified.obj";
-
-    //------------------------------------------------------------------------------------------------------------	
-	private void Start()
+	[RequireComponent(typeof(MeshFilter))]
+	public class Example : MonoBehaviour
 	{
-		//	Load the OBJ in
-		var lStream = new FileStream(INPUT_PATH, FileMode.Open);
-		var lOBJData = OBJLoader.LoadOBJ(lStream);
-		var lMeshFilter = GetComponent<MeshFilter>();
-		lMeshFilter.mesh.LoadOBJ(lOBJData);
-		lStream.Close();
-		
-		lStream = null;
-		lOBJData = null;
+		//------------------------------------------------------------------------------------------------------------	
+		private const string InputPath = @"Assets/OBJ-IO/Examples/Meshes/Teapot.obj";
+		private const string OutputPath = @"Assets/OBJ-IO/Examples/Meshes/Teapot_Modified.obj";
 
-		//	Wiggle Vertices in Mesh
-		var lVertices = lMeshFilter.mesh.vertices;
-		for (int lCount = 0; lCount < lVertices.Length; ++lCount)
+		//------------------------------------------------------------------------------------------------------------	
+		private void Start()
 		{
-			lVertices[lCount] = lVertices[lCount] + Vector3.up * Mathf.Sin(lVertices[lCount].x) * 4f;
-		}
-		lMeshFilter.mesh.vertices = lVertices;
+			//	Load the OBJ in
+			var lStream = new FileStream(InputPath, FileMode.Open);
+			var lObjData = ObjLoader.LoadObj(lStream);
+			var lMeshFilter = GetComponent<MeshFilter>();
+			lMeshFilter.mesh.LoadObj(lObjData);
+			lStream.Close();
 
-		//	Export the new Wiggled Mesh
-		if (File.Exists(OUTPUT_PATH))
-		{
-			File.Delete(OUTPUT_PATH);
+			//	Wiggle Vertices in Mesh
+			var lVertices = lMeshFilter.mesh.vertices;
+			for (var lCount = 0; lCount < lVertices.Length; ++lCount)
+			{
+				lVertices[lCount] += Vector3.up * Mathf.Sin(lVertices[lCount].x) * 4f;
+			}
+			lMeshFilter.mesh.vertices = lVertices;
+
+			//	Export the new Wiggled Mesh
+			if (File.Exists(OutputPath))
+			{
+				File.Delete(OutputPath);
+			}
+			lStream = new FileStream(OutputPath, FileMode.Create);
+			lObjData = lMeshFilter.mesh.EncodeObj();
+			ObjLoader.ExportObj(lObjData, lStream);
+			lStream.Close();
 		}
-		lStream = new FileStream(OUTPUT_PATH, FileMode.Create);
-		lOBJData = lMeshFilter.mesh.EncodeOBJ();
-		OBJLoader.ExportOBJ(lOBJData, lStream);
-		lStream.Close();
 	}
 }

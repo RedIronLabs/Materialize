@@ -1,0 +1,19 @@
+{
+    "name": "StandaloneFileBrowser.Runtime.Mac",
+    "rootNamespace": "",
+    "references": [
+        "GUID:266075ab69906e105bc5ec52774f1930"
+    ],
+    "includePlatforms": [
+        "Editor",
+        "macOSStandalone"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

@@ -1,173 +1,248 @@
-﻿using UnityEngine;
-using System.Collections;
+﻿#region
 
-public class PostProcessGui : MonoBehaviour {
+using UnityEngine;
+using UnityEngine.Rendering.PostProcessing;
 
-	public GameObject MainGuiObject;
-	public GameObject MainCamera;
+#endregion
 
-	OpaquePostProcess oppScript;
-	PostProcess ppScript;
+public class PostProcessGui : MonoBehaviour
+{
+    private const int MinHeight = 40;
+    [SerializeField] private PostProcessVolume Volume;
+    [SerializeField] private GameObject TestObject;
 
-	bool EnablePostProcess = true;
+    private bool _enablePostProcess = true;
+    private bool _initialized;
+    private PostProcessProfile _profile;
 
-	bool UseTAA = true;
+    //Bloom
+    private Bloom _bloom;
+    private bool _bloomEnabled;
+    private float _bloomIntensity;
+    private float _bloomThreshold;
+    private float _lensDirtIntensity;
 
-	float BloomThreshold = 0.8f;
-	string BloomThresholdText = "0.8";
+    //Depth of Field
+    private DepthOfField _depthOfField;
+    private bool _dofEnabled;
+    private float _dofFocalLength;
+    private float _dofFocalDistance;
+    private bool _autoFocus = true;
 
-	float BloomAmount = 1.0f;
-	string BloomAmountText = "1.0";
-	
-	float LensFlareAmount = 0.5f;
-	string LensFlareAmountText = "0.5";
+    //AmbientOcclusion
+    private AmbientOcclusion _ambientOcclusion;
+    private float _ambientOcclusionIntensity;
 
-	float LensDirtAmount = 1.0f;
-	string LensDirtAmountText = "1.0";
+    //Vignette
+    private Vignette _vignette;
+    private bool _vignetteEnabled;
+    private float _vignetteIntensity;
+    private float _vignetteSmoothness;
 
-	float VignetteAmount = 0.2f;
-	string VignetteAmountText = "0.2";
+    private Rect _windowRect = new(350, 350, 300, MinHeight);
+    public GameObject MainCamera;
 
-	float DOFMaxBlur = 0.0f;
-	string DOFMaxBlurText = "0.0";
+    // Use this for initialization
+    private void Start()
+    {
+        var volume = Volume.GetComponent<PostProcessVolume>();
+        // ReSharper disable once InvertIf
+        if (volume)
+        {
+            var orgProfile = volume.profile;
+            var inst = Instantiate(orgProfile);
+            _profile = inst;
+            volume.profile = inst;
+        }
 
-	float DOFFocalDepth = 10.0f;
-	string DOFFocalDepthText = "10.0";
+        Initialize();
+    }
 
-	float DOFMaxDistance = 50.0f;
-	string DOFMaxDistanceText = "50.0";
+    private void Update()
+    {
+        if (_enablePostProcess)
+        {
+            if (_depthOfField)
+            {
+                if (_autoFocus)
+                {
+                    _depthOfField.focusDistance.value =
+                        _autoFocus ? AutoFocus() : _dofFocalDistance;
+                }
+            }
 
-	bool AutoFocus = true;
-
-	Rect windowRect = new Rect (360, 330, 300, 530);
-
-	bool initialized = false;
-	
-	// Use this for initialization
-	void Start () {
-		Initialize ();
-	}
-
-	void Initialize(){
-		if (!initialized) {
-			oppScript = MainCamera.GetComponent<OpaquePostProcess> ();
-			ppScript = MainCamera.GetComponent<PostProcess> ();
-			initialized = true;
-		}
-	}
-
-	public void PostProcessOn(){
-		Initialize ();
-
-		EnablePostProcess = true;
-
-		oppScript.enabled = true;
-		
-		ppScript.enabled = true;
-		ppScript.bloomThreshold = BloomThreshold;
-		ppScript.bloomAmount = BloomAmount;
-		
-		ppScript.lensFlareAmount = LensFlareAmount;
-		ppScript.lensDirtAmount = LensDirtAmount;
-		ppScript.vignetteAmount = VignetteAmount;
-
-
-		if (DOFMaxBlur > 12) {
-			ppScript.DOFMaxBlur = 16;
-		} else if (DOFMaxBlur > 6) {
-			ppScript.DOFMaxBlur = 8;
-		} else if (DOFMaxBlur > 3) {
-			ppScript.DOFMaxBlur = 4;
-		} else if (DOFMaxBlur > 1.5) {
-			ppScript.DOFMaxBlur = 2;
-		} else if (DOFMaxBlur > 0.5) {
-			ppScript.DOFMaxBlur = 1;
-		} else {
-			ppScript.DOFMaxBlur = 0;
-		}
-		ppScript.focalDepth = DOFFocalDepth;
-		ppScript.DOFMaxDistance = DOFMaxDistance;
-
-		ppScript.AutoFocus = AutoFocus;
-	}
-
-	public void PostProcessOff(){
-		Initialize ();
-
-		EnablePostProcess = false;
-
-		oppScript.enabled = false;			
-		ppScript.enabled = false;
-	}
-	
-	// Update is called once per frame
-	void Update () {
-
-		if (EnablePostProcess) {
-			PostProcessOn();
-		} else {
-			PostProcessOff();
-		}
-	
-	}
-
-	void DoMyWindow ( int windowID ) {
-		
-		int spacingX = 0;
-		int spacingY = 50;
-		int spacing2Y = 70;
-		
-		int offsetX = 10;
-		int offsetY = 30;
-		
-		EnablePostProcess = GUI.Toggle (new Rect (offsetX, offsetY, 280, 30), EnablePostProcess, "Enable Post Process");
-		offsetY += 40;
+            PostProcessOn();
+        } else
+        {
+            PostProcessOff();
+        }
+    }
 
 
-		GuiHelper.Slider (new Rect (offsetX, offsetY, 280, 50), "Bloom Threshold", BloomThreshold, BloomThresholdText, out BloomThreshold, out BloomThresholdText, 0.0f, 2.0f );
-		offsetY += 40;
-		
-		GuiHelper.Slider (new Rect (offsetX, offsetY, 280, 50), "Bloom Amount", BloomAmount, BloomAmountText, out BloomAmount, out BloomAmountText, 0.0f, 8.0f );
-		offsetY += 60;
+    // ReSharper disable Unity.PerformanceAnalysis
+    private void Initialize()
+    {
+        if (_initialized) return;
 
+        _bloom = _profile.GetSetting<Bloom>();
+        if (_bloom)
+        {
+            _bloomEnabled = _bloom.enabled.value;
+            _bloomIntensity = _bloom.intensity.value;
+            _bloomThreshold = _bloom.threshold;
+            //Lens Dirt
+            _lensDirtIntensity = _bloom.dirtIntensity.value;
+        }
 
+        _depthOfField = _profile.GetSetting<DepthOfField>();
+        if (_depthOfField)
+        {
+            _dofEnabled = _depthOfField.enabled.value;
+            _dofFocalLength = _depthOfField.focalLength;
+            _dofFocalDistance = _depthOfField.focusDistance;
+        }
 
-		GuiHelper.Slider (new Rect (offsetX, offsetY, 280, 50), "Lens Flare Amount", LensFlareAmount, LensFlareAmountText, out LensFlareAmount, out LensFlareAmountText, 0.0f, 4.0f );
-		offsetY += 40;
+        _ambientOcclusion = _profile.GetSetting<AmbientOcclusion>();
+        if (_ambientOcclusion)
+        {
+            _ambientOcclusionIntensity = _ambientOcclusion.intensity.value;
+        }
 
-		GuiHelper.Slider (new Rect (offsetX, offsetY, 280, 50), "Lens Dirt Amount", LensDirtAmount, LensDirtAmountText, out LensDirtAmount, out LensDirtAmountText, 0.0f, 2.0f );
-		offsetY += 40;
+        _vignette = _profile.GetSetting<Vignette>();
+        if (_vignette)
+        {
+            _vignetteEnabled = _vignette.enabled.value;
+            _vignetteIntensity = _vignette.intensity.value;
+            _vignetteSmoothness = _vignette.smoothness.value;
+        }
 
-		GuiHelper.Slider (new Rect (offsetX, offsetY, 280, 50), "Vignette Amount", VignetteAmount, VignetteAmountText, out VignetteAmount, out VignetteAmountText, 0.0f, 1.0f );
-		offsetY += 60;
+        _initialized = true;
+    }
 
-		
-		GuiHelper.Slider (new Rect (offsetX, offsetY, 280, 50), "DOF Max Blur", DOFMaxBlur, DOFMaxBlurText, out DOFMaxBlur, out DOFMaxBlurText, 0.0f, 16.0f );
-		offsetY += 40;
-		
-		GuiHelper.Slider (new Rect (offsetX, offsetY, 280, 50), "DOF Focal Depth", DOFFocalDepth, DOFFocalDepthText, out DOFFocalDepth, out DOFFocalDepthText, 1.0f, 50.0f );
-		offsetY += 40;
-		
-		GuiHelper.Slider (new Rect (offsetX, offsetY, 280, 50), "DOF Max Distance", DOFMaxDistance, DOFMaxDistanceText, out DOFMaxDistance, out DOFMaxDistanceText, 5.0f, 200.0f );
-		offsetY += 50;
+    private void UpdateValues()
+    {
+        if (_bloom)
+        {
+            _bloom.enabled.value = _bloomEnabled;
+            _bloom.intensity.value = _bloomIntensity;
+            _bloom.threshold.value = _bloomThreshold;
+            _bloom.dirtIntensity.value = _lensDirtIntensity;
+        }
 
-		AutoFocus = GUI.Toggle (new Rect (offsetX, offsetY, 150, 20), AutoFocus, "Use Auto Focus");
-		offsetY += 30;
+        if (_depthOfField)
+        {
+            _depthOfField.enabled.value = _dofEnabled;
+            _depthOfField.focalLength.value = _dofFocalLength;
+        }
 
-		if (GUI.Button (new Rect (offsetX + 150, offsetY, 130, 30), "Close")) {
-			this.gameObject.SetActive(false);
-		}
-		
-		GUI.DragWindow();
-		
-	}
-	
-	void OnGUI () {
-		
-		windowRect.width = 300;
-		windowRect.height = 510;
-		
-		windowRect = GUI.Window(19, windowRect, DoMyWindow, "Post Process");
-		
-	}
+        if (_ambientOcclusion)
+        {
+            _ambientOcclusion.intensity.value = _ambientOcclusionIntensity;
+        }
+
+        // ReSharper disable once InvertIf
+        if (_vignette)
+        {
+            _vignette.enabled.value = _vignetteEnabled;
+            _vignette.intensity.value = _vignetteIntensity;
+            _vignette.smoothness.value = _vignetteSmoothness;
+        }
+    }
+
+    public void PostProcessOn() { Volume.enabled = true; }
+
+    public void PostProcessOff() { Volume.enabled = false; }
+
+    private float AutoFocus()
+    {
+        var dist = Vector3.Dot(TestObject.transform.position - MainCamera.transform.position,
+            MainCamera.transform.forward);
+
+        return dist;
+    }
+
+    private void DoMyWindow(int windowId)
+    {
+        const int offsetX = 10;
+        var offsetY = 30;
+
+        _enablePostProcess = GUI.Toggle(new Rect(offsetX, offsetY, 280, 30), _enablePostProcess,
+            "Enable Post Process");
+        offsetY += 30;
+
+        if (_enablePostProcess)
+        {
+            //Bloom
+            _bloomEnabled = GUI.Toggle(new Rect(offsetX, offsetY, 150, 20), _bloomEnabled,
+                "Use Bloom");
+            offsetY += 30;
+            if (_bloomEnabled)
+            {
+                GuiHelper.Slider(new Rect(offsetX, offsetY, 280, 50), "Bloom Intensity",
+                    _bloomIntensity, out _bloomIntensity, 0.0f, 8.0f);
+                offsetY += 40;
+
+                GuiHelper.Slider(new Rect(offsetX, offsetY, 280, 50), "Bloom Threshold",
+                    _bloomThreshold, out _bloomThreshold, 0.0f, 1.0f);
+                offsetY += 40;
+
+                GuiHelper.Slider(new Rect(offsetX, offsetY, 280, 50), "Lens Dirt Intensity",
+                    _lensDirtIntensity, out _lensDirtIntensity, 0.0f, 5.0f);
+                offsetY += 45;
+            }
+
+            //DoF
+            _dofEnabled = GUI.Toggle(new Rect(offsetX, offsetY, 150, 20), _dofEnabled,
+                "Use Depth of Field");
+            offsetY += 30;
+            if (_dofEnabled)
+            {
+                GuiHelper.Slider(new Rect(offsetX, offsetY, 280, 50), "DoF Focal Length",
+                    _dofFocalLength, out _dofFocalLength, 0.0f, 200.0f);
+                offsetY += 40;
+
+                _autoFocus = GUI.Toggle(new Rect(offsetX, offsetY, 150, 20), _autoFocus,
+                    "Use Auto Focus");
+                offsetY += 30;
+
+                if (!_autoFocus)
+                {
+                    GuiHelper.Slider(new Rect(offsetX, offsetY, 280, 50), "DoF Focal Distance",
+                        _dofFocalDistance, out _dofFocalDistance, 0.0f, 20.0f);
+                    offsetY += 40;
+                }
+
+                offsetY += 5;
+            }
+
+            //Ambient Occlusion
+            GuiHelper.Slider(new Rect(offsetX, offsetY, 280, 50), "Ambient Occlusion Intensity",
+                _ambientOcclusionIntensity, out _ambientOcclusionIntensity, 0.0f, 4.0f);
+            offsetY += 45;
+
+            //Vignette
+            _vignetteEnabled = GUI.Toggle(new Rect(offsetX, offsetY, 150, 20), _vignetteEnabled,
+                "Use Vignette");
+            offsetY += 30;
+            if (_vignetteEnabled)
+            {
+                GuiHelper.Slider(new Rect(offsetX, offsetY, 280, 50), "Vignette Intensity",
+                    _vignetteIntensity, out _vignetteIntensity, 0.0f, 8.0f);
+                offsetY += 40;
+
+                GuiHelper.Slider(new Rect(offsetX, offsetY, 280, 50), "Vignette Smoothness",
+                    _vignetteSmoothness, out _vignetteSmoothness, 0.0f, 1.0f);
+                offsetY += 45;
+            }
+        }
+
+        if (GUI.Button(new Rect(offsetX + 150, offsetY, 130, 30), "Close"))
+            gameObject.SetActive(false);
+
+        _windowRect.height = MinHeight + offsetY;
+        UpdateValues();
+        GUI.DragWindow();
+    }
+
+    private void OnGUI() { _windowRect = GUI.Window(19, _windowRect, DoMyWindow, "Post Process"); }
 }

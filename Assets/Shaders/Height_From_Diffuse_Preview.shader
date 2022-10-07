@@ -88,7 +88,7 @@
 
 				float2 UV = IN.uv;
 
-				float4 heightTex = float4(0,0,0,0);
+				float4 heightTex;
 
 				half4 mainTex = tex2Dlod(_MainTex, float4(UV, 0, 0));
 				half noBlurTex = 0;

@@ -262,7 +262,7 @@ Shader "Hidden/Blit_Shader" {
 		
 		mainTex.xyz = normalize( mainTex.xyz ) * 0.5 + 0.5;
 		
-		if( _FlipNormalY == 0 ){
+		if( _FlipNormalY == 1 ){
 			mainTex.y = 1.0 - mainTex.y;
 		}
 		

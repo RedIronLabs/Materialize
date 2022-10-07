@@ -1,50 +1,49 @@
-﻿
-using System;
-using System.IO;
-using System.Collections;
-
-using UnityEngine;
+﻿using System.IO;
+using OBJ_IO.Plugins.Extension;
+using OBJ_IO.Plugins.Mesh.OBJ;
 using UnityEditor;
+using UnityEngine;
 
-using UnityExtension;
-
-public class OBJWindow : EditorWindow
+namespace OBJ_IO.Editor
 {
-	//------------------------------------------------------------------------------------------------------------
-	private MeshFilter m_MeshFilter = null; 
+	public class ObjWindow : EditorWindow
+	{
+		//------------------------------------------------------------------------------------------------------------
+		private MeshFilter _mMeshFilter; 
 	
-    //------------------------------------------------------------------------------------------------------------
-    [MenuItem("OBJ-IO/OBJ Mesh Exporter")]
-    public static void Execute()
-    {
-        OBJWindow.GetWindow<OBJWindow>();
-    }
-	
-    //------------------------------------------------------------------------------------------------------------
-    private void OnGUI()
-    {
-        m_MeshFilter = (MeshFilter)EditorGUILayout.ObjectField("MeshFilter", m_MeshFilter, typeof(MeshFilter), true);
-		
-		if (m_MeshFilter != null)
+		//------------------------------------------------------------------------------------------------------------
+		[MenuItem("OBJ-IO/OBJ Mesh Exporter")]
+		public static void Execute()
 		{
-			if (GUILayout.Button("Export OBJ"))
+			GetWindow<ObjWindow>();
+		}
+	
+		//------------------------------------------------------------------------------------------------------------
+		private void OnGUI()
+		{
+			_mMeshFilter = (MeshFilter)EditorGUILayout.ObjectField("MeshFilter", _mMeshFilter, typeof(MeshFilter), true);
+		
+			if (_mMeshFilter != null)
 			{
-				var lOutputPath = EditorUtility.SaveFilePanel("Save Mesh as OBJ", "", m_MeshFilter.name + ".obj", "obj");
-				
-				if (File.Exists(lOutputPath))
+				if (GUILayout.Button("Export OBJ"))
 				{
-					File.Delete(lOutputPath);
-				}
+					var lOutputPath = EditorUtility.SaveFilePanel("Save Mesh as OBJ", "", _mMeshFilter.name + ".obj", "obj");
 				
-				var lStream = new FileStream(lOutputPath, FileMode.Create);
-				var lOBJData = m_MeshFilter.sharedMesh.EncodeOBJ();
-				OBJLoader.ExportOBJ(lOBJData, lStream);
-				lStream.Close();
+					if (File.Exists(lOutputPath))
+					{
+						File.Delete(lOutputPath);
+					}
+				
+					var lStream = new FileStream(lOutputPath, FileMode.Create);
+					var lObjData = _mMeshFilter.sharedMesh.EncodeObj();
+					ObjLoader.ExportObj(lObjData, lStream);
+					lStream.Close();
+				}
+			}
+			else
+			{
+				GUILayout.Label("Please provide a MeshFilter");
 			}
 		}
-		else
-		{
-			GUILayout.Label("Please provide a MeshFilter");
-		}
-    }
+	}
 }

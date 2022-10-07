@@ -1,0 +1,20 @@
+{
+    "name": "StandaloneFileBrowser.Runtime",
+    "rootNamespace": "",
+    "references": [
+        "GUID:266075ab69906e105bc5ec52774f1930",
+        "GUID:1c7672cb0dd7305e8b41b2e59b09bf98",
+        "GUID:a32c876e88cfec298934c8a0bfb5f1bb",
+        "GUID:c1683eb190d6590c78a509da50858c82",
+        "GUID:bff204342af0dd9c7a5b8b99d439b37e"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
